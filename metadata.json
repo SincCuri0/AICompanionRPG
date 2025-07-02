@@ -1,0 +1,8 @@
+{
+  "name": "Copy of Interactive AI Adventure Foundational (working)",
+  "description": "Embark on an interactive AI-powered adventure with unique characters and voices.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "prompt": ""
+}
