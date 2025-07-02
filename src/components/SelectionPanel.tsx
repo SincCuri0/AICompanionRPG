@@ -44,30 +44,44 @@ export default defineComponent({
     };
   },
   template: `
-    <div class="lg:w-[60%] w-full flex flex-col items-center lg:items-start p-4 lg:p-0">
-      <div class="lg:w-4/5 w-full flex items-center justify-center lg:justify-start -mb-4 lg:mb-7 lg:ml-24">
-        <h1 class="text-3xl lg:text-5xl font-bold text-center lg:text-left my-4 lg:my-0 text-white">Interactive AI Adventure</h1>
+    <div class="w-full max-w-4xl mx-auto flex flex-col items-center justify-center min-h-screen p-6">
+      <!-- Title Section -->
+      <div class="text-center mb-12">
+        <h1 class="text-4xl lg:text-6xl font-bold text-white mb-4" style="background: linear-gradient(90deg, #a855f7, #ec4899, #ef4444); background-clip: text; -webkit-background-clip: text; -webkit-text-fill-color: transparent; color: white;">
+          Interactive AI Adventure
+        </h1>
+        <p class="text-xl lg:text-2xl text-gray-300 font-light">
+          Embark on a journey limited only by your imagination
+        </p>
       </div>
 
       <!-- Genre Selection -->
-      <div class="flex flex-col lg:items-start items-center w-full lg:w-auto lg:ml-24 mt-8 lg:mt-0">
-        <div class="text-2xl lg:text-4xl my-4 lg:my-0 lg:mb-5 self-center lg:self-start text-gray-100">Select Your Adventure's Genre</div>
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 gap-3 lg:gap-4 lg:w-[calc(350px+70px)] w-full max-w-lg">
+      <div class="w-full max-w-3xl">
+        <h2 class="text-2xl lg:text-3xl font-semibold text-center text-white mb-8">
+          Choose Your Adventure Genre
+        </h2>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6 justify-items-center">
           <button v-for="genre in genres" :key="genre"
                   @click="selectGenre(genre)"
-                  :class="['p-3 lg:p-4 rounded-xl text-lg lg:text-xl font-semibold transition-all duration-200 ease-in-out',
-                           selectedGenre === genre ? 'bg-green-600 text-white ring-2 ring-green-300 scale-105' : 'bg-gray-700 hover:bg-gray-600 text-gray-100']"
+                  :class="[
+                    'w-full max-w-xs p-4 lg:p-6 rounded-2xl text-lg lg:text-xl font-semibold transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-2xl border-2',
+                    selectedGenre === genre 
+                      ? 'bg-gradient-to-br from-green-500 to-emerald-600 text-white border-green-400 shadow-lg shadow-green-500/25 scale-105' 
+                      : 'bg-gradient-to-br from-slate-700 to-slate-800 hover:from-slate-600 hover:to-slate-700 text-gray-100 border-slate-600 hover:border-slate-500 shadow-lg hover:shadow-slate-500/25'
+                  ]"
                   role="button" :aria-pressed="selectedGenre === genre">
-            {{ genre }}
+            <div class="flex items-center justify-center h-full">
+              {{ genre }}
+            </div>
           </button>
         </div>
       </div>
 
       <!-- Generate Character & Start Button -->
-      <div class="w-full lg:ml-24 flex justify-center lg:justify-start mt-10 lg:mt-12">
+      <div class="w-full max-w-md mx-auto mt-12">
         <button id="generateCharacterButton" @click="generateCharacter"
                 :disabled="!isGenreSelected || isConnecting"
-                class="lg:w-[350px] w-full max-w-md text-xl lg:text-2xl font-semibold button bg-blue-600 text-white rounded-2xl py-4 px-6 flex items-center justify-center cursor-pointer hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-gray-500 disabled:cursor-not-allowed disabled:opacity-70">
+                class="w-full text-xl lg:text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white rounded-2xl py-4 px-8 flex items-center justify-center transition-all duration-300 ease-in-out transform hover:scale-105 hover:shadow-2xl shadow-lg focus:outline-none focus:ring-4 focus:ring-blue-500/50 disabled:from-gray-500 disabled:to-gray-600 disabled:cursor-not-allowed disabled:opacity-70 disabled:hover:scale-100">
           <svg v-if="isConnecting" class="animate-spin h-7 w-7 mr-3 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -77,10 +91,10 @@ export default defineComponent({
           </svg>
           {{ isConnecting ? 'Generating...' : 'Generate Character & Start' }}
         </button>
-      </div>
-       <div v-if="!isGenreSelected || (isGenreSelected && !isConnecting && selectionPrompt !== 'Ready for an adventure!')" class="w-full lg:ml-24 text-center lg:text-left mt-4 text-gray-400">
-            {{ selectionPrompt }}
+        <div v-if="!isGenreSelected || (isGenreSelected && !isConnecting && selectionPrompt !== 'Ready for an adventure!')" class="text-center mt-6 text-gray-400 text-lg">
+          {{ selectionPrompt }}
         </div>
+      </div>
     </div>
   `,
 });

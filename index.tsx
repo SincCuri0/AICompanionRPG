@@ -58,7 +58,7 @@ const ImagineOrchestrator = defineComponent({
     // Initialize composables
     const adventureState = useAdventureState();
     const appUI = useAppUI(adventureState);
-    const conversationManager = useConversationManager(adventureState, apiKey);
+    const conversationManager = useConversationManager(adventureState, apiKey, liveAudioRef);
     const adventureSetup = useAdventureSetup(ai, imageGeneratorService, adventureState, apiKey);
 
 
@@ -67,16 +67,7 @@ const ImagineOrchestrator = defineComponent({
     };
     
     // This handler remains but the button is removed from main UI
-    const handleRegenerateCompanionImage = () => {
-        if(companionInfoPanelRef.value) {
-            companionInfoPanelRef.value.triggerRegenerateImage();
-        }
-    };
     
-    const triggerInteractiveSession = async () => {
-        await nextTick(); 
-        conversationManager.onStartOrResumeAdventure();
-    };
 
     const handleUserText = async (text: string) => {
       if (text.trim()) {
@@ -85,7 +76,6 @@ const ImagineOrchestrator = defineComponent({
     };
 
     const handleCompanionText = (text: string) => {
-      // This is now handled automatically by the conversation manager
       console.log('Companion text:', text);
     };
 
@@ -120,6 +110,11 @@ const ImagineOrchestrator = defineComponent({
         }
     };
 
+    const showCompanionInfo = ref(false);
+    const toggleCompanionInfo = () => {
+      showCompanionInfo.value = !showCompanionInfo.value;
+    };
+
 
     return {
       // State and computed from adventureState
@@ -130,17 +125,11 @@ const ImagineOrchestrator = defineComponent({
 
       // Adventure setup methods
       handleStartAdventureSetup: () => {
-        // Set game screen active immediately, so loading happens on the game screen
-        adventureState.isGameScreenActive.value = true; 
-        // Ensure body overflow is handled correctly for game screen
-        if (appUI.isSmallScreen.value) {
-          document.body.style.overflow = 'hidden';
-        } else {
-          document.body.style.overflow = 'hidden'; // Also for large screen during game
-        }
-        adventureSetup.handleStartAdventureSetup(triggerInteractiveSession);
+        adventureState.isGameScreenActive.value = true;
+        document.body.style.overflow = 'hidden';
+        adventureSetup.handleStartAdventureSetup();
       },
-      handleRegenerateSceneImage: adventureSetup.handleRegenerateSceneImage, // Handler remains, button removed
+      handleRegenerateSceneImage: adventureSetup.handleRegenerateSceneImage,
       handleGenreSelected: adventureSetup.handleGenreSelected,
 
       // Conversation interaction methods from conversationManager
@@ -154,7 +143,7 @@ const ImagineOrchestrator = defineComponent({
         else adventureSetup.handleQuotaExceeded(source); 
       },
       handleInvalidVoiceError: conversationManager.handleInvalidVoiceError,
-      handleTriggerContextualChange: conversationManager.handleTriggerContextualChange, // Handler remains, button removed
+      handleTriggerContextualChange: conversationManager.handleTriggerContextualChange,
       
       // Chat handlers
       handleUserText,
@@ -168,12 +157,13 @@ const ImagineOrchestrator = defineComponent({
       GENRES_LIST: GENRES, 
       SCREEN_PADDING,
       
-      handleUpdateImagePrompt, 
-      handleRegenerateCompanionImage, // Handler remains, button removed
+      handleUpdateImagePrompt,
 
       isMicDisabled,
       waveformState,
       micButtonClickHandler,
+      showCompanionInfo,
+      toggleCompanionInfo,
     };
   },
   template: `
@@ -203,31 +193,23 @@ const ImagineOrchestrator = defineComponent({
           <div class="flex-grow flex flex-col lg:flex-row gap-3 lg:gap-4 p-2 lg:p-5" 
                :style="{paddingBottom: (isSmallScreen ? 200 : SCREEN_PADDING + 80) + 'px'}">
             
-            <!-- Main Story and Conversation Window -->
-            <div class="flex-grow order-1 lg:w-3/4 flex items-stretch">
-              <SceneDisplayPanel 
-                class="h-full"
-                :scene-image-url="initialSceneImageUrl"
-                :scene-narration="initialSceneNarration"
-                :is-narrating="isNarrating"
-                :is-loading="isLoadingScene && (!initialSceneImageUrl || !initialSceneNarration) || (isLoadingAdventure && !isCharacterGenerated && !isSceneDataReady)"
-                :chat-history="chatHistory"
-                :companion-name="generatedCharacterName"
-              />
-            </div>
-
-            <!-- Right Sidebar (Desktop visible, Mobile toggled) -->
-            <div class="lg:w-1/4 xl:w-[380px] shrink-0 order-2 flex flex-col gap-3 lg:gap-4 lg:pt-0"
-                 :class="{
-                   'hidden lg:flex': !showMobileSidebar && isSmallScreen, 
-                   'fixed inset-y-0 right-0 z-40 w-3/4 max-w-xs sm:max-w-sm bg-gray-900/95 backdrop-blur-md p-4 shadow-xl transform transition-transform duration-300 ease-in-out lg:static lg:transform-none lg:bg-transparent lg:p-0 lg:shadow-none': showMobileSidebar && isSmallScreen,
-                   'lg:flex': !isSmallScreen
-                 }">
-                <div v-if="showMobileSidebar && isSmallScreen" class="flex justify-end lg:hidden mb-2">
-                    <button @click="showMobileSidebar = false" class="p-2 text-gray-300 hover:text-white" aria-label="Close sidebar">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                    </button>
-                </div>
+            <!-- Main Content Area -->
+            <div class="flex-grow flex items-start justify-center relative p-4">
+              <!-- Game Window - CENTERED -->
+              <div class="w-full max-w-4xl">
+                <SceneDisplayPanel 
+                  class="w-full h-[calc(100vh-200px)]"
+                  :scene-image-url="initialSceneImageUrl"
+                  :scene-narration="initialSceneNarration"
+                  :is-narrating="isNarrating"
+                  :is-loading="isLoadingScene && (!initialSceneImageUrl || !initialSceneNarration) || (isLoadingAdventure && !isCharacterGenerated && !isSceneDataReady)"
+                  :chat-history="chatHistory"
+                  :companion-name="generatedCharacterName"
+                />
+              </div>
+              
+              <!-- Companion Panel - ABSOLUTE positioned next to centered panel -->
+              <div v-if="!isSmallScreen" class="absolute top-0 w-80 hidden xl:block" style="left: calc(50% + 2rem + 32rem);">
                 <CompanionInfoPanel
                   ref="companionInfoPanelRef"
                   :character-name="generatedCharacterName"
@@ -242,40 +224,73 @@ const ImagineOrchestrator = defineComponent({
                   @update:imagePrompt="handleUpdateImagePrompt"
                   @quota-exceeded="() => handleQuotaExceeded('characterImage')"
                 />
-                <!-- Model Selectors, Voice Guide, Action Buttons for Share/Prompts/Regen are removed from here -->
+              </div>
             </div>
           </div>
-          
-          <!-- Overlay for mobile sidebar -->
-          <div v-if="showMobileSidebar && isSmallScreen" @click="showMobileSidebar = false" class="fixed inset-0 bg-black/60 z-30 lg:hidden"></div>
 
-          <!-- Mobile Sidebar Toggle Button -->
-          <button v-if="isSmallScreen && isGameScreenActive && !showMobileSidebar" @click="showMobileSidebar = !showMobileSidebar"
-                  class="fixed top-4 right-4 z-50 p-2 bg-gray-700/80 text-white rounded-full shadow-lg lg:hidden"
-                  aria-label="Open sidebar">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"></path></svg>
+          <!-- Mobile Companion Panel Overlay -->
+          <Transition name="slide-left">
+            <div v-if="isSmallScreen && showCompanionInfo" 
+                 class="fixed inset-y-0 right-0 z-50 w-80 bg-gray-800 shadow-2xl overflow-y-auto">
+              <div class="p-4">
+                <button @click="toggleCompanionInfo" 
+                        class="mb-4 w-full flex items-center justify-center px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  <span class="text-gray-300">Close</span>
+                </button>
+                <CompanionInfoPanel
+                  ref="companionInfoPanelRef"
+                  :character-name="generatedCharacterName"
+                  :character-description="generatedCharacterDescription"
+                  :detailed-visual-description="generatedDetailedVisualDescription"
+                  :genre="selectedGenre"
+                  :image-model="selectedImageModel"
+                  :relationship-level="relationshipLevel"
+                  :image-key="characterImageKey"
+                  :is-loading-character="isLoadingCharacter || (isLoadingAdventure && !isCharacterGenerated)"
+                  :is-character-generated="isCharacterGenerated"
+                  @update:imagePrompt="handleUpdateImagePrompt"
+                  @quota-exceeded="() => handleQuotaExceeded('characterImage')"
+                />
+              </div>
+            </div>
+          </Transition>
+
+          <!-- Burger Menu Button - Small Screens Only -->
+          <button v-if="isGameScreenActive && isSmallScreen" 
+                  @click="toggleCompanionInfo"
+                  class="fixed top-4 right-4 z-40 w-12 h-12 bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-lg flex items-center justify-center hover:bg-gray-700/90 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
           </button>
 
-          <!-- Bottom Bar: Floating Message and Mic Button -->
-          <div v-if="isGameScreenActive" 
-               class="fixed bottom-0 left-0 right-0 z-20 flex flex-col items-center"
-               :style="{paddingBottom: (isSmallScreen ? SCREEN_PADDING * 1.5 : SCREEN_PADDING) + 'px'}">
-            
-            <Transition name="fade">
-              <div v-if="floatingMessageText && floatingMessageText.length > 0 && waveformState !== 'userSpeaking'"
-                   class="w-full max-w-md xl:max-w-xl text-center px-3 py-1.5 mb-2 text-xs sm:text-sm rounded-md shadow"
-                   :class="{
+          <!-- Status Text - Top Right -->
+          <Transition name="fade">
+            <div v-if="isGameScreenActive && floatingMessageText && floatingMessageText.length > 0 && waveformState !== 'userSpeaking'"
+                 class="fixed top-4 z-30 max-w-xs text-center px-4 py-2 text-sm rounded-lg shadow-lg backdrop-blur-sm"
+                 :class="[
+                   isSmallScreen ? 'right-20' : 'right-4',
+                   {
                      'bg-yellow-600/90 text-yellow-50': isNarrating,
                      'bg-purple-600/90 text-purple-50': waveformState === 'systemSpeaking' || waveformState === 'connecting',
                      'bg-gray-700/90 text-gray-100': waveformState === 'idle' && !isNarrating && !isConnectingAudio,
                      'bg-gray-600/90 text-gray-200': waveformState === 'loading'
-                   }">
-                {{ floatingMessageText }}
-              </div>
-            </Transition>
+                   }
+                 ]">
+              {{ floatingMessageText }}
+            </div>
+          </Transition>
 
-            <div class="bg-gray-800 rounded-lg shadow-xl p-3 sm:p-4">
-              <div class="flex items-center justify-center my-1 sm:my-2">
+          <!-- Bottom Bar: Mic Button -->
+          <div v-if="isGameScreenActive" 
+               class="fixed bottom-0 left-0 right-0 z-20 flex justify-center"
+               :style="{paddingBottom: (isSmallScreen ? SCREEN_PADDING * 1.5 : SCREEN_PADDING) + 'px'}">
+
+            <div class="bg-gray-800/95 backdrop-blur-sm rounded-xl shadow-2xl p-4">
+              <div class="flex items-center justify-center">
                  <button @click="micButtonClickHandler" 
                       :disabled="isMicDisabled && waveformState !== 'systemSpeaking'"
                       :class="{
@@ -313,7 +328,6 @@ const ImagineOrchestrator = defineComponent({
                   </svg>
               </button>
               </div>
-              <!-- Share, Prompts, Regen, Contextual buttons removed -->
             </div>
           </div>
         </div>
@@ -346,7 +360,6 @@ const ImagineOrchestrator = defineComponent({
         :scene-narration-prompt="rawSceneNarrationLLMPrompt"
         @close="showRawModal = false"
       />
-      <!-- Old floating message div is removed, integrated with mic bar area -->
     </div>
   `
 })

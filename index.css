@@ -19,6 +19,16 @@
   opacity: 0;
 }
 
+.slide-left-enter-active,
+.slide-left-leave-active {
+  transition: transform 0.3s ease;
+}
+
+.slide-left-enter-from,
+.slide-left-leave-to {
+  transform: translateX(100%);
+}
+
 .elasticBottom-enter-active,
 .elasticBottom-leave-active {
   pointer-events: none;

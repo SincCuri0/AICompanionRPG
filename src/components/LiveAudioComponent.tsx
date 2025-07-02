@@ -46,6 +46,7 @@ export default defineComponent({
     let isInQuietDuration: boolean = false;
     let quietDurationStartTime: number = 0;
     let lastAudioActivityTime: number = Date.now();
+    let isMicrophoneMuted: boolean = false;
 
     const stopAllAudio = () => {
       activeSources.forEach(source => {
@@ -58,6 +59,20 @@ export default defineComponent({
       activeSources = [];
       if (outputAudioContext) {
         nextStartTime = outputAudioContext.currentTime;
+      }
+    };
+
+    const muteMicrophone = () => {
+      isMicrophoneMuted = true;
+      if (inputNode) {
+        inputNode.gain.value = 0;
+      }
+    };
+
+    const unmuteMicrophone = () => {
+      isMicrophoneMuted = false;
+      if (inputNode) {
+        inputNode.gain.value = 1;
       }
     };
 
@@ -316,7 +331,7 @@ export default defineComponent({
         const bufferSize = 4096;
         scriptProcessorNode = inputAudioContext.createScriptProcessor(bufferSize, 1, 1);
         scriptProcessorNode.onaudioprocess = (audioProcessingEvent) => {
-          if (!isRecording.value || !currentSession) return;
+          if (!isRecording.value || !currentSession || isMicrophoneMuted) return;
 
           if (isInQuietDuration) {
             const currentTime = Date.now();
@@ -478,7 +493,9 @@ export default defineComponent({
       interruptSensitivityOptions: INTERRUPT_SENSITIVITY_OPTIONS, 
       startRecording,
       stopRecording,
-      sendInstructionToAI
+      sendInstructionToAI,
+      muteMicrophone,
+      unmuteMicrophone
     };
   },
   template: `

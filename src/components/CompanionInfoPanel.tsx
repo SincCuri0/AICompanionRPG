@@ -56,8 +56,8 @@ export default defineComponent({
         Companion details will appear here.
       </div>
       <div v-else>
-        <div class="w-full flex items-start mb-3 space-x-3">
-          <div class="w-20 h-20 sm:w-24 sm:h-24 rounded-lg overflow-hidden shrink-0 bg-gray-700">
+        <div class="w-full flex flex-col items-center mb-4">
+          <div class="w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48 rounded-xl overflow-hidden mb-4 bg-gray-700 shadow-lg">
             <CharacterImage
               ref="characterImageRef"
               :key="imageKey"
@@ -68,9 +68,9 @@ export default defineComponent({
               @quota-exceeded="handleQuotaExceeded"
             />
           </div>
-          <div class="flex-grow min-w-0">
-              <h3 class="text-lg sm:text-xl font-bold text-white truncate" :title="characterName">{{ characterName || 'Companion' }}</h3>
-              <p class="text-xs text-gray-400 italic whitespace-normal break-words" :title="characterDescription">{{ characterDescription }}</p>
+          <div class="text-center w-full">
+            <h3 class="text-xl sm:text-2xl font-bold text-white mb-2" :title="characterName">{{ characterName || 'Companion' }}</h3>
+            <p class="text-sm text-gray-300 leading-relaxed px-2" :title="characterDescription">{{ characterDescription }}</p>
           </div>
         </div>
         <div>

@@ -39,7 +39,7 @@ export class GroqService {
           ],
           model: "llama-3.1-8b-instant",
           temperature: 0.8,
-          max_tokens: 1024,
+          max_tokens: 2048,
         };
 
         // Only add JSON format for character generation
@@ -72,7 +72,7 @@ export class GroqService {
           ],
           model: "llama-3.1-8b-instant",
           temperature: 0.8,
-          max_tokens: 1024,
+          max_tokens: 2048,
         };
 
         // Only add JSON format for character generation

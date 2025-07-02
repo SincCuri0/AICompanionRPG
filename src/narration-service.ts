@@ -4,6 +4,7 @@
  */
 import { ElevenLabsTTSService } from './elevenlabs-tts-service';
 import { voiceSelectionService } from './voice-selection-service';
+import { audioEventBus } from './audio-event-bus';
 
 export class NarrationService {
   private ttsService: ElevenLabsTTSService;
@@ -26,6 +27,9 @@ export class NarrationService {
       return;
     }
 
+    // Signal that narration TTS is starting
+    audioEventBus.startTTS('narration');
+
     try {
       // Use voice selection service to pick appropriate narrator voice if genre provided
       if (genre) {
@@ -42,6 +46,9 @@ export class NarrationService {
     } catch (error) {
       console.error("[NarrationService] TTS narration failed:", error);
       // Don't throw - just log and continue
+    } finally {
+      // Signal that narration TTS has ended
+      audioEventBus.endTTS();
     }
   }
 }

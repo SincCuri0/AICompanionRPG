@@ -36,7 +36,7 @@ Generate a VALID JSON object with this EXACT structure:
     "accent": "string - Accent preference (e.g., 'american', 'british') or empty string"
   },
   "scene": {
-    "imagePrompt": "string - A detailed image generation prompt featuring the character in the opening scene",
+    "imagePrompt": "string - A detailed image generation prompt featuring the character in the opening scene using EXACT visual details from detailedVisualDescription",
     "narrationText": "string - 2-4 sentence opening narration introducing the scene and character, ending with user prompt",
     "narratorVoiceName": "string - MUST be one from: [${availableVoiceNames.join(', ')}]"
   }
@@ -44,12 +44,13 @@ Generate a VALID JSON object with this EXACT structure:
 
 CRITICAL REQUIREMENTS:
 1. ALL content must be thematically consistent with "${genre}" genre
-2. Scene imagePrompt must feature the character by name and detailed description
+2. Scene imagePrompt must feature the character by name using IDENTICAL visual details from detailedVisualDescription
 3. Scene narrationText must introduce both the scene and character, ending with a question/prompt for the user
 4. Both voiceName and narratorVoiceName must be from the provided voice list
 5. Scene imagePrompt should describe a wide-shot view suitable as a background image
 6. Character detailedVisualDescription should be comprehensive for image generation
 7. Ensure internal consistency - scene elements should reference the character data
+8. VISUAL CONSISTENCY: Scene imagePrompt must copy exact clothing, features, colors from detailedVisualDescription
 
 Example narrationText ending: "...What do you say to [CharacterName]?"
 
@@ -183,16 +184,25 @@ export function buildSceneImagePromptLLMPrompt(
     return `You are an AI assistant helping to set up an interactive adventure game.
 The genre is "${genre}".
 The main companion character is named "${characterName}".
-The companion's visual description is: "${characterDetailedVisualDescription}".
+The companion's complete visual description is: "${characterDetailedVisualDescription}".
 
-Your task is to generate a concise and evocative Succeeded:
-The image MUST visually feature the companion character, "${characterName}", as described.
-The scene should be the very beginning of an adventure in the "${genre}" genre.
-The image should be suitable as a backdrop and a visual for the opening narration.
-Focus on creating a strong mood and sense of place, appropriate for "${genre}".
+Your task is to generate a detailed image generation prompt for the opening scene.
+
+CRITICAL REQUIREMENTS:
+1. The image MUST visually feature the companion character "${characterName}" using EXACTLY the same visual details provided in their description
+2. Use the EXACT same clothing, physical features, colors, and style elements described for ${characterName}
+3. The scene should be the very beginning of an adventure in the "${genre}" genre
+4. The image should be suitable as a backdrop and a visual for the opening narration
+5. Focus on creating a strong mood and sense of place, appropriate for "${genre}"
+6. Ensure visual consistency - the character should look identical to how they appear in their individual portrait
+
+Character Visual Consistency Guidelines:
+- Copy key visual elements directly from the character description
+- Maintain the same clothing, hair, accessories, and physical features
+- Use the same art style and color palette mentioned in the character description
+- The character should be recognizable as the same individual from their portrait
 
 Example for Fantasy with a character named 'Elara': "A captivating wide-shot of the mystical Silverwood Forest at dawn. Elara, a nimble elf with flowing silver hair and a green tunic, is visible in the foreground, looking towards a mysterious, glowing ruin deep within the woods. Sunbeams filter through the ancient trees. Epic fantasy art style."
-Example for Sci-Fi with a character named 'Bolt': "Interior of a dimly lit, high-tech spaceship bridge. Bolt, a sleek chrome robot with glowing blue optics, stands at a holographic console displaying complex schematics. Outside the main viewport, a vibrant nebula swirls. Cinematic sci-fi concept art."
 
 Output ONLY the image prompt. Do not add any extra text like "Image Prompt:" or explanations.
 Image Prompt:`;

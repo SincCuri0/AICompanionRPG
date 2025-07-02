@@ -2,15 +2,17 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import { ref, Ref } from 'vue';
+import { ref, Ref, watch } from 'vue';
 import { ConversationService, ConversationConfig } from '../conversation-service';
+import { audioEventBus } from '../audio-event-bus';
 import type { useAdventureState } from './useAdventureState';
 
 type AdventureState = ReturnType<typeof useAdventureState>;
 
 export function useConversationManager(
     state: AdventureState,
-    apiKey: string
+    apiKey: string,
+    liveAudioRef: Ref<any>
 ) {
     const {
         isCharacterGenerated, isNarrating, isLoadingAdventure, selectedGenre,
@@ -27,6 +29,23 @@ export function useConversationManager(
     const isSpeaking = ref(false);
     const isConnectingAudio = ref(false);
     const conversationMessage = ref('');
+
+    // Watch audio state changes and control STT accordingly
+    watch(() => audioEventBus.state.value, (newState, oldState) => {
+        if (!newState.isSTTActive && newState.isTTSPlaying) {
+            // Pause STT during TTS
+            if (isListening.value) {
+                conversationService.pauseListening();
+            }
+        } else if (newState.isSTTActive && !newState.isTTSPlaying && oldState?.isTTSPlaying) {
+            // Resume STT after TTS ends (only if TTS was previously playing)
+            setTimeout(async () => {
+                if (isCharacterGenerated.value && !isNarrating.value && !isLoadingAdventure.value) {
+                    await startListening();
+                }
+            }, 1000);
+        }
+    }, { deep: true });
 
     const buildConversationConfig = (): ConversationConfig => {
         console.log('[ConversationManager] Building config with selectedVoiceId:', selectedVoiceId.value);
@@ -125,10 +144,29 @@ export function useConversationManager(
             isSpeaking.value = true;
             conversationMessage.value = `${config.characterName} is speaking...`;
 
+            // Signal that TTS is starting
+            audioEventBus.startTTS('conversation');
+            
+            // Mute microphone during TTS playback to prevent feedback
+            if (liveAudioRef.value?.muteMicrophone) {
+                liveAudioRef.value.muteMicrophone();
+            }
+
             try {
                 await conversationService.speakText(aiMessage.text, config.voiceName, config.voiceId);
             } catch (speechError) {
                 console.error('TTS playback failed:', speechError);
+            } finally {
+                // Clear speaking state first
+                isSpeaking.value = false;
+                
+                // Unmute microphone after TTS playback
+                if (liveAudioRef.value?.unmuteMicrophone) {
+                    liveAudioRef.value.unmuteMicrophone();
+                }
+                
+                // Signal that TTS has ended
+                audioEventBus.endTTS();
             }
 
         } catch (error) {
@@ -140,11 +178,10 @@ export function useConversationManager(
             }, 3000);
         } finally {
             isProcessing.value = false;
-            isSpeaking.value = false;
             conversationMessage.value = '';
             
-            // Small delay to avoid immediately picking up any audio tail-end
-            await new Promise(resolve => setTimeout(resolve, 500));
+            // Longer delay to avoid immediately picking up any audio tail-end
+            await new Promise(resolve => setTimeout(resolve, 1500));
         }
     };
 
@@ -158,6 +195,12 @@ export function useConversationManager(
         if (!isCharacterGenerated.value || isNarrating.value || isLoadingAdventure.value) {
             console.warn('Cannot start conversation: adventure not ready');
             return;
+        }
+
+        // Check if audio system is currently playing TTS
+        if (audioEventBus.state.value.isTTSPlaying) {
+            console.log('[ConversationManager] TTS is playing, will start listening when it ends');
+            return; // The watcher will start listening when TTS ends
         }
 
         await startListening();

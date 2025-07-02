@@ -184,6 +184,21 @@ export class STTService {
     return this.isListening;
   }
 
+  pauseListening(): void {
+    if (this.recognition && this.isListening) {
+      console.log('[STT] Pausing speech recognition');
+      this.recognition.stop();
+    }
+  }
+
+  resumeListening(): void {
+    if (this.recognition && !this.isListening) {
+      console.log('[STT] Resuming speech recognition');
+      this.recognition.start();
+      this.isListening = true;
+    }
+  }
+
   private async setupVoiceDetection(): Promise<void> {
     try {
       this.mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });

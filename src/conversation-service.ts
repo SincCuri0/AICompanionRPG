@@ -77,6 +77,14 @@ export class ConversationService {
     return this.sttService.getIsListening();
   }
 
+  pauseListening(): void {
+    this.sttService.pauseListening();
+  }
+
+  resumeListening(): void {
+    this.sttService.resumeListening();
+  }
+
   addMessage(sender: 'user' | 'companion', text: string): ConversationMessage {
     const message: ConversationMessage = {
       id: this.nextMessageId++,

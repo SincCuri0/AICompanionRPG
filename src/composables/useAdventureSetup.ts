@@ -73,7 +73,7 @@ export function useAdventureSetup(
     };
 
 
-    const handleStartAdventureSetup = async (startInteractiveCallback: () => Promise<void>) => {
+    const handleStartAdventureSetup = async () => {
         if (!selectedGenre.value) {
             alert("Please select a genre first.");
             return;
@@ -230,7 +230,14 @@ export function useAdventureSetup(
                     if (appBackground) appBackground.style.backgroundImage = 'none';
                 });
 
-                // Wait for image generation to complete, then start TTS
+                // Immediately activate game screen 
+                isLoadingScene.value = false;
+                isLoadingAdventure.value = false;
+                isGameScreenActive.value = true;
+                if (isSmallScreen.value) document.body.style.overflow = 'hidden';
+                else document.body.style.overflow = 'hidden';
+
+                // Wait for image generation to complete, then start TTS and interactive session
                 sceneImageTask.finally(async () => {
                     const narrationStartTime = performance.now();
                     console.log("[AdventureSetup] Scene image ready, starting narration TTS generation...");
@@ -250,16 +257,6 @@ export function useAdventureSetup(
                         isNarrating.value = false;
                     }
                 });
-
-                // Immediately activate game and start interactive session
-                isLoadingScene.value = false;
-                isLoadingAdventure.value = false;
-                isGameScreenActive.value = true;
-                if (isSmallScreen.value) document.body.style.overflow = 'hidden';
-                else document.body.style.overflow = 'hidden';
-
-                console.log("[AdventureSetup] ✅ Starting interactive session immediately...");
-                await startInteractiveCallback();
 
                 const totalDuration = performance.now() - adventureStartTime;
                 console.log(`[AdventureSetup] ⏱️ Total adventure setup completed in ${totalDuration.toFixed(2)}ms (image/audio continue in background)`);
