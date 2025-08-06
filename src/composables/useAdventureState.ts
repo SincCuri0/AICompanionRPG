@@ -14,6 +14,8 @@ export interface ChatMessage {
   id: number;
   sender: 'user' | 'companion';
   text: string;
+  imageUrl?: string; // Optional image URL for messages with images
+  isNarrating?: boolean; // Optional flag to indicate if this message is currently being narrated
 }
 
 export function useAdventureState() {
@@ -127,7 +129,10 @@ export function useAdventureState() {
 
   const isGenreSelected = computed(() => !!selectedGenre.value);
   const isCharacterGenerated = computed(() => !!(generatedCharacterName.value && AIGeneratedVoiceName.value && generatedDetailedVisualDescription.value));
-  const isSceneDataReady = computed(() => !!(initialSceneImageUrl.value && initialSceneNarration.value && initialSceneNarratorVoice.value));
+  const isSceneDataReady = computed(() => {
+    // Scene is ready when we have at least one narrator message in chat history
+    return chatHistory.value.some(msg => msg.sender === 'companion');
+  });
 
   const selectionPanelPrompt = computed(() => {
     if (!isGenreSelected.value) return "Select a Genre to begin your adventure!";

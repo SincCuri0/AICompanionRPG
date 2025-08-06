@@ -12,7 +12,7 @@ import { GroqService } from '../groq-service';
 
 import { VOICE_OPTIONS } from '../ai-data';
 import { Genre } from '../ai-data-types';
-import { buildConsolidatedAdventurePrompt, buildCharacterGenerationPrompt, buildSceneImagePromptLLMPrompt, buildSceneNarrationLLMPrompt, buildNarrationSpeechPrompt, buildImageDescriptionFromPromptLLMPrompt } from '../prompt-builder';
+import { buildConsolidatedAdventurePrompt, buildExplorationAdventurePrompt, buildCharacterGenerationPrompt, buildSceneImagePromptLLMPrompt, buildSceneNarrationLLMPrompt, buildNarrationSpeechPrompt, buildImageDescriptionFromPromptLLMPrompt } from '../prompt-builder';
 import { voiceSelectionService } from '../voice-selection-service';
 import type { useAdventureState } from './useAdventureState'; // For type inference
 
@@ -43,7 +43,7 @@ export function useAdventureSetup(
         isGameScreenActive, selectedDialogModel, selectedImageModel,
         actualCharacterGenerationLLMPrompt,
         isCharacterGenerated, resetFullAdventureState: _resetFullAdventureState,
-        isConnectingAudio, isSceneDataReady
+        isConnectingAudio, isSceneDataReady, chatHistory, nextMessageId
     } = state;
 
     const isSmallScreen = ref(window.innerWidth < 1024);
@@ -95,20 +95,71 @@ export function useAdventureSetup(
         state.actualVoicePrompt.value = '';
         state.actualCharacterImagePrompt.value = '';
         const availableVoiceNames = VOICE_OPTIONS.map(v => v.name);
-        actualCharacterGenerationLLMPrompt.value = buildConsolidatedAdventurePrompt(selectedGenre.value, availableVoiceNames);
+        actualCharacterGenerationLLMPrompt.value = buildExplorationAdventurePrompt(selectedGenre.value, availableVoiceNames);
 
 
         try {
             const adventureStartTime = performance.now();
             console.log("[AdventureSetup] Starting consolidated adventure generation...");
-            
+
             // Generate ALL adventure data in one Groq call!
             const consolidatedGenStartTime = performance.now();
             
-            const systemPrompt = "You are a comprehensive adventure generator for an interactive AI adventure game. Generate all character and scene data in valid JSON format with the exact structure requested.";
+            // Create JSON schema for adventure setup
+            const adventureSetupSchema = {
+                type: "object",
+                properties: {
+                    character: {
+                        type: "object",
+                        properties: {
+                            characterType: { type: "string" },
+                            role: { type: "string" },
+                            mood: { type: "string" },
+                            style: { type: "string" },
+                            voiceName: { type: "string" },
+                            characterName: { type: "string" },
+                            characterDescription: { type: "string" },
+                            detailedVisualDescription: { type: "string" },
+                            coreTrait: { type: "string" },
+                            mainWant: { type: "string" },
+                            keyFlaw: { type: "string" },
+                            voicePromptInstruction: { type: "string" },
+                            gender: { type: "string" },
+                            age: { type: "string" },
+                            accent: { type: "string" }
+                        },
+                        required: ["characterType", "role", "mood", "style", "voiceName", "characterName", "characterDescription", "detailedVisualDescription", "coreTrait", "mainWant", "keyFlaw", "voicePromptInstruction", "gender", "age", "accent"],
+                        additionalProperties: false
+                    },
+                    scene: {
+                        type: "object",
+                        properties: {
+                            imagePrompt: { type: "string" },
+                            narrationText: { type: "string" },
+                            narratorVoiceName: { type: "string" }
+                        },
+                        required: ["imagePrompt", "narrationText", "narratorVoiceName"],
+                        additionalProperties: false
+                    }
+                },
+                required: ["character", "scene"],
+                additionalProperties: false
+            };
+
+            const systemPrompt = "You are a creative storyteller crafting unique adventure experiences. Create diverse, compelling scenarios that avoid generic settings.";
             const userPrompt = actualCharacterGenerationLLMPrompt.value;
-            
-            const consolidatedResponse = await groqSvc.generateResponse(systemPrompt, userPrompt, true);
+
+            const consolidatedResponse = await groqSvc.generateResponse(
+                systemPrompt,
+                userPrompt,
+                false, // Don't use basic JSON mode
+                {
+                    useStructuredOutput: true,
+                    jsonSchema: adventureSetupSchema,
+                    useCreativeModel: true,
+                    temperature: 1.0 // High creativity for varied scenarios
+                }
+            );
             const consolidatedGenDuration = performance.now() - consolidatedGenStartTime;
             console.log(`[AdventureSetup] ⏱️ Consolidated adventure generation completed in ${consolidatedGenDuration.toFixed(2)}ms`);
 
@@ -176,77 +227,101 @@ export function useAdventureSetup(
                     accent: parsedCharData.accent
                 };
 
+                // Start parallel processing of voice selection and scene setup
+                console.log("[AdventureSetup] Starting parallel processing...");
+
+                // Voice selection (fast, synchronous)
                 const selectedElevenLabsVoiceId = voiceSelectionService.selectVoiceForCharacter(characterTraits);
                 selectedVoiceId.value = selectedElevenLabsVoiceId;
                 console.log("[AdventureSetup] Character traits for voice selection:", characterTraits);
                 console.log("[AdventureSetup] Selected ElevenLabs voice ID:", selectedElevenLabsVoiceId);
-                console.log("[AdventureSetup] selectedVoiceId.value is now:", selectedVoiceId.value);
 
-                currentContextualMood.value = '';
-                currentContextualStyle.value = '';
-                isLoadingCharacter.value = false;
-                console.log("[AdventureSetup] Consolidated adventure generation successful. Starting image and narration...");
-                
                 // Set scene data from consolidated response
                 initialSceneImagePrompt.value = parsedSceneData.imagePrompt;
                 initialSceneNarration.value = parsedSceneData.narrationText;
                 initialSceneNarratorVoice.value = parsedSceneData.narratorVoiceName;
                 rawSceneNarrationLLMPrompt.value = `Generated via consolidated prompt: ${parsedSceneData.narrationText}`;
-                
-                console.log("[AdventureSetup] ✅ Scene data ready:", {
+
+                // Update state
+                currentContextualMood.value = '';
+                currentContextualStyle.value = '';
+                isLoadingCharacter.value = false;
+                isLoadingScene.value = true;
+
+                console.log("[AdventureSetup] ✅ Character and scene data ready:", {
                     imagePrompt: parsedSceneData.imagePrompt.substring(0, 50) + '...',
                     narrationText: parsedSceneData.narrationText.substring(0, 50) + '...',
                     narratorVoice: parsedSceneData.narratorVoiceName
                 });
-                
-                // Start background tasks
-                isLoadingScene.value = true;
+
+                // Prepare background and UI
                 initialSceneImageUrl.value = '';
                 const appBackground = document.getElementById('app-background');
                 if (appBackground) appBackground.style.backgroundImage = 'none';
 
-                // Start image generation and wait for completion before TTS
+                // Start image generation in parallel
                 const imgGenStartTime = performance.now();
                 console.log("[AdventureSetup] Starting scene image generation...");
                 const sceneImageTask = imageGeneratorService.generate(
-                    selectedImageModel.value, 
-                    parsedSceneData.imagePrompt, 
+                    selectedImageModel.value,
+                    parsedSceneData.imagePrompt,
                     { numberOfImages: 1, outputMimeType: 'image/jpeg' }
                 ).then(async (sceneImageResponse) => {
                     const parts = sceneImageResponse.candidates?.[0]?.content?.parts;
+                    let imageUrl: string | undefined;
+
                     if (parts && parts.length > 0) {
                         const imagePart = parts.find(part => part.inlineData && part.inlineData.data);
                         if (imagePart) {
                             const mimeType = imagePart.inlineData.mimeType || 'image/jpeg';
-                            initialSceneImageUrl.value = `data:${mimeType};base64,${imagePart.inlineData.data}`;
-                            if (appBackground) appBackground.style.backgroundImage = `url(${initialSceneImageUrl.value})`;
+                            imageUrl = `data:${mimeType};base64,${imagePart.inlineData.data}`;
+                            initialSceneImageUrl.value = imageUrl;
+                            if (appBackground) appBackground.style.backgroundImage = `url(${imageUrl})`;
                             const imgGenDuration = performance.now() - imgGenStartTime;
                             console.log(`[AdventureSetup] ⏱️ Scene image generation completed in ${imgGenDuration.toFixed(2)}ms`);
                         }
                     }
+                    return imageUrl;
                 }).catch((imgError) => {
                     console.warn("[AdventureSetup] Scene image generation failed, using fallback:", imgError);
                     initialSceneImageUrl.value = `${SCENE_IMAGE_FALLBACK_PREFIX}Scene image could not be generated.`;
                     if (appBackground) appBackground.style.backgroundImage = 'none';
+                    return undefined;
                 });
 
-                // Immediately activate game screen 
+                // Wait for image generation to complete before activating UI
+                console.log("[AdventureSetup] Waiting for image generation to complete...");
+                const imageUrl = await sceneImageTask;
+
+                // Add initial scene to chat history with image
+                const initialMessage = {
+                    id: nextMessageId.value++,
+                    sender: 'companion' as const,
+                    text: parsedSceneData.narrationText,
+                    imageUrl: imageUrl,
+                    isNarrating: false
+                };
+                chatHistory.value.push(initialMessage);
+
+                // Now activate game screen - everything is ready
+                console.log("[AdventureSetup] All components ready, activating game screen...");
                 isLoadingScene.value = false;
                 isLoadingAdventure.value = false;
                 isGameScreenActive.value = true;
                 if (isSmallScreen.value) document.body.style.overflow = 'hidden';
                 else document.body.style.overflow = 'hidden';
 
-                // Wait for image generation to complete, then start TTS and interactive session
-                sceneImageTask.finally(async () => {
+                // Start narration asynchronously (doesn't block UI activation)
+                const startNarration = async () => {
                     const narrationStartTime = performance.now();
-                    console.log("[AdventureSetup] Scene image ready, starting narration TTS generation...");
+                    console.log("[AdventureSetup] Starting narration TTS generation...");
                     isNarrating.value = true;
-                    
+                    initialMessage.isNarrating = true;
+
                     try {
                         await narratorSvc.playNarration(
-                            parsedSceneData.narrationText, 
-                            parsedSceneData.narratorVoiceName, 
+                            parsedSceneData.narrationText,
+                            parsedSceneData.narratorVoiceName,
                             selectedGenre.value
                         );
                         const narrationDuration = performance.now() - narrationStartTime;
@@ -255,8 +330,12 @@ export function useAdventureSetup(
                         console.error("[AdventureSetup] Narration playback failed:", narrationError);
                     } finally {
                         isNarrating.value = false;
+                        initialMessage.isNarrating = false;
                     }
-                });
+                };
+
+                // Start narration without waiting for it
+                startNarration();
 
                 const totalDuration = performance.now() - adventureStartTime;
                 console.log(`[AdventureSetup] ⏱️ Total adventure setup completed in ${totalDuration.toFixed(2)}ms (image/audio continue in background)`);

@@ -167,7 +167,7 @@ const ImagineOrchestrator = defineComponent({
     };
   },
   template: `
-    <div id="imagine-orchestrator" class="w-full min-h-screen flex flex-col transition-all duration-500 ease-in-out"
+    <div id="imagine-orchestrator" class="w-full h-screen flex flex-col transition-all duration-500 ease-in-out"
          :class="{'items-center justify-center': !isGameScreenActive, 'items-stretch justify-start': isGameScreenActive}">
 
       <!-- Selection Screen -->
@@ -187,50 +187,45 @@ const ImagineOrchestrator = defineComponent({
 
       <!-- Game Screen -->
       <Transition name="fade">
-        <div v-if="isGameScreenActive" class="w-full h-full flex flex-col flex-grow">
-          
-          <!-- Main Content Area (Desktop: Row, Mobile: Column structure) -->
-          <div class="flex-grow flex flex-col lg:flex-row gap-3 lg:gap-4 p-2 lg:p-5" 
-               :style="{paddingBottom: (isSmallScreen ? 200 : SCREEN_PADDING + 80) + 'px'}">
-            
-            <!-- Main Content Area -->
-            <div class="flex-grow flex items-start justify-center relative p-4">
-              <!-- Game Window - CENTERED -->
-              <div class="w-full max-w-4xl">
-                <SceneDisplayPanel 
-                  class="w-full h-[calc(100vh-200px)]"
-                  :scene-image-url="initialSceneImageUrl"
-                  :scene-narration="initialSceneNarration"
-                  :is-narrating="isNarrating"
-                  :is-loading="isLoadingScene && (!initialSceneImageUrl || !initialSceneNarration) || (isLoadingAdventure && !isCharacterGenerated && !isSceneDataReady)"
-                  :chat-history="chatHistory"
-                  :companion-name="generatedCharacterName"
-                />
-              </div>
-              
-              <!-- Companion Panel - ABSOLUTE positioned next to centered panel -->
-              <div v-if="!isSmallScreen" class="absolute top-0 w-80 hidden xl:block" style="left: calc(50% + 2rem + 32rem);">
-                <CompanionInfoPanel
-                  ref="companionInfoPanelRef"
-                  :character-name="generatedCharacterName"
-                  :character-description="generatedCharacterDescription"
-                  :detailed-visual-description="generatedDetailedVisualDescription"
-                  :genre="selectedGenre"
-                  :image-model="selectedImageModel"
-                  :relationship-level="relationshipLevel"
-                  :image-key="characterImageKey"
-                  :is-loading-character="isLoadingCharacter || (isLoadingAdventure && !isCharacterGenerated)"
-                  :is-character-generated="isCharacterGenerated"
-                  @update:imagePrompt="handleUpdateImagePrompt"
-                  @quota-exceeded="() => handleQuotaExceeded('characterImage')"
-                />
-              </div>
+        <div v-if="isGameScreenActive" class="w-full h-screen flex flex-col">
+
+          <!-- Main Content Area - Fully Justified -->
+          <div class="flex-1 flex items-center justify-center p-4 lg:p-6 relative"
+               :style="{paddingBottom: (isSmallScreen ? 180 : 100) + 'px'}">
+
+            <!-- Game Window - Centered and Fully Justified -->
+            <div class="w-full max-w-7xl h-full flex items-center justify-center">
+              <SceneDisplayPanel
+                class="w-full h-full max-h-[calc(100vh-120px)] lg:max-h-[calc(100vh-140px)]"
+                :is-loading="isLoadingScene || (isLoadingAdventure && !isCharacterGenerated && !isSceneDataReady)"
+                :chat-history="chatHistory"
+                :companion-name="generatedCharacterName"
+                :is-exploration-mode="true"
+              />
+            </div>
+
+            <!-- Companion Panel - ABSOLUTE positioned next to centered panel -->
+            <div v-if="!isSmallScreen && false" class="absolute top-0 w-80 hidden xl:block" style="left: calc(50% + 2rem + 32rem);">
+              <CompanionInfoPanel
+                ref="companionInfoPanelRef"
+                :character-name="generatedCharacterName"
+                :character-description="generatedCharacterDescription"
+                :detailed-visual-description="generatedDetailedVisualDescription"
+                :genre="selectedGenre"
+                :image-model="selectedImageModel"
+                :relationship-level="relationshipLevel"
+                :image-key="characterImageKey"
+                :is-loading-character="isLoadingCharacter || (isLoadingAdventure && !isCharacterGenerated)"
+                :is-character-generated="isCharacterGenerated"
+                @update:imagePrompt="handleUpdateImagePrompt"
+                @quota-exceeded="() => handleQuotaExceeded('characterImage')"
+              />
             </div>
           </div>
 
           <!-- Mobile Companion Panel Overlay -->
           <Transition name="slide-left">
-            <div v-if="isSmallScreen && showCompanionInfo" 
+            <div v-if="isSmallScreen && showCompanionInfo && false"
                  class="fixed inset-y-0 right-0 z-50 w-80 bg-gray-800 shadow-2xl overflow-y-auto">
               <div class="p-4">
                 <button @click="toggleCompanionInfo" 
@@ -259,7 +254,7 @@ const ImagineOrchestrator = defineComponent({
           </Transition>
 
           <!-- Burger Menu Button - Small Screens Only -->
-          <button v-if="isGameScreenActive && isSmallScreen" 
+          <button v-if="isGameScreenActive && isSmallScreen && false"
                   @click="toggleCompanionInfo"
                   class="fixed top-4 right-4 z-40 w-12 h-12 bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-lg flex items-center justify-center hover:bg-gray-700/90 transition-colors">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -267,22 +262,7 @@ const ImagineOrchestrator = defineComponent({
             </svg>
           </button>
 
-          <!-- Status Text - Top Right -->
-          <Transition name="fade">
-            <div v-if="isGameScreenActive && floatingMessageText && floatingMessageText.length > 0 && waveformState !== 'userSpeaking'"
-                 class="fixed top-4 z-30 max-w-xs text-center px-4 py-2 text-sm rounded-lg shadow-lg backdrop-blur-sm"
-                 :class="[
-                   isSmallScreen ? 'right-20' : 'right-4',
-                   {
-                     'bg-yellow-600/90 text-yellow-50': isNarrating,
-                     'bg-purple-600/90 text-purple-50': waveformState === 'systemSpeaking' || waveformState === 'connecting',
-                     'bg-gray-700/90 text-gray-100': waveformState === 'idle' && !isNarrating && !isConnectingAudio,
-                     'bg-gray-600/90 text-gray-200': waveformState === 'loading'
-                   }
-                 ]">
-              {{ floatingMessageText }}
-            </div>
-          </Transition>
+
 
           <!-- Bottom Bar: Mic Button -->
           <div v-if="isGameScreenActive" 

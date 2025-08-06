@@ -26,6 +26,8 @@ export interface ConversationMessage {
   sender: 'user' | 'companion';
   text: string;
   timestamp?: number;
+  imageUrl?: string; // Optional image URL for messages with images
+  isNarrating?: boolean; // Optional flag to indicate if this message is currently being narrated
 }
 
 export class ConversationService {
@@ -85,12 +87,14 @@ export class ConversationService {
     this.sttService.resumeListening();
   }
 
-  addMessage(sender: 'user' | 'companion', text: string): ConversationMessage {
+  addMessage(sender: 'user' | 'companion', text: string, imageUrl?: string, isNarrating?: boolean): ConversationMessage {
     const message: ConversationMessage = {
       id: this.nextMessageId++,
       sender,
       text,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      imageUrl,
+      isNarrating
     };
     this.chatHistory.push(message);
     return message;

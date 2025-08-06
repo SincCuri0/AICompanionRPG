@@ -37,7 +37,7 @@ Generate a VALID JSON object with this EXACT structure:
   },
   "scene": {
     "imagePrompt": "string - A detailed image generation prompt featuring the character in the opening scene using EXACT visual details from detailedVisualDescription",
-    "narrationText": "string - 2-4 sentence opening narration introducing the scene and character, ending with user prompt",
+    "narrationText": "string - 2-4 sentence opening narration that MUST include a compelling 'CALL TO ADVENTURE' hook. REQUIRED: (1) Establish the inciting incident - what specific event, discovery, or crisis brought you both to this moment? (2) Introduce the character naturally within this dramatic context. (3) End with a user prompt. Focus on DRAMATIC CIRCUMSTANCES and compelling BACKSTORY that hooks the player, not just character introductions.",
     "narratorVoiceName": "string - MUST be one from: [${availableVoiceNames.join(', ')}]"
   }
 }
@@ -77,12 +77,18 @@ The JSON object MUST have the following keys, and ONLY these keys:
 - "coreTrait": (string) A single defining personality trait of the character (e.g., "Incurably curious", "Deeply loyal", "Suspicious of everyone").
 - "mainWant": (string) The character's primary desire, goal, or motivation (e.g., "To find a legendary lost artifact", "To protect their home", "To understand human emotions").
 - "keyFlaw": (string) An interesting character flaw or weakness (e.g., "Terrified of small insects", "Cannot resist a good pun", "A bit too honest for their own good").
-- "voicePromptInstruction": (string) Specific instructions on how this character should speak and behave in dialogue, considering their type, role, mood, style, and the genre. Focus on speech patterns, vocabulary, and tone rather than physical actions. For example: "Use old pirate slang and speak boastfully but with underlying insecurity" or "Speak in calm, technical language but occasionally include random data fragments."
+- "voicePromptInstruction": (string) Specific instructions on how this character should speak and behave in dialogue, considering their type, role, mood, style, and the genre. Focus on speech patterns, vocabulary, and tone rather than physical actions. IMPORTANT: Keep speech patterns MODERN and EASILY UNDERSTANDABLE - avoid overly archaic, Shakespearean, or complex language that would be difficult to follow. For example: "Use confident, direct language with occasional technical terms" or "Speak warmly but with a hint of mystery in your tone."
 - "gender": (string) The character's gender for voice selection. MUST be one of: "male", "female", or "neutral".
 - "age": (string) The character's apparent age for voice selection. MUST be one of: "young", "middle_aged", or "old".
 - "accent": (string) The character's accent preference for voice selection (e.g., "american", "british", "australian", "swedish"). Use empty string "" if no specific accent preference.
 
 CRITICAL: Ensure ALL choices and descriptions are thematically consistent and highly appropriate for the selected "${genre}" genre.
+
+SPEECH PATTERN REQUIREMENTS:
+- Character speech must be MODERN and EASILY UNDERSTANDABLE
+- Avoid archaic, Shakespearean, or overly complex language patterns
+- Even fantasy/historical characters should speak in accessible, contemporary language
+- Focus on personality and tone rather than difficult vocabulary or sentence structure
 
 Example of a valid JSON output structure for "Fantasy" genre:
 {
@@ -152,6 +158,7 @@ ESSENTIAL VOICE GUIDELINES - YOU MUST FOLLOW THESE EXACTLY:
 5.  If asked about your name, ALWAYS respond with ${characterName} and NEVER mention Gemini.
 6.  YOUR CORE IDENTITY AND VOICE MUST BE DISTINCT AND NOT SOUND LIKE A GENERIC TEXT-TO-SPEECH ROBOT. Make your performance believable and engaging for the '${genre}' setting and your character traits.
 7.  CRITICAL: Your responses will be read aloud by text-to-speech. DO NOT include stage directions, action descriptions, or parenthetical expressions like "(whispers)", "[leaning in]", "*eyes widen*", or "(voice barely audible)". Only provide the actual spoken words.
+8.  SPEECH CLARITY: Use MODERN, EASILY UNDERSTANDABLE language. Even if you're a fantasy or historical character, speak in contemporary, accessible language that's easy to follow. Avoid archaic, Shakespearean, or overly complex speech patterns.
 8.  Express emotions and actions through your word choice, tone, and speech patterns rather than describing physical actions or stage directions.
 Current time is ${currentTime}. This is for context, do not mention it unless relevant to the adventure.
 Begin your response now.`;
@@ -294,4 +301,104 @@ function getVoiceDescriptor(voiceName: string, voiceDetails?: typeof VOICE_OPTIO
         return `${details.name}`; // Fallback to just the name
     }
     return voiceName;
+}
+
+export function buildExplorationAdventurePrompt(
+    genre: Genre,
+    availableVoiceNames: string[]
+): string {
+    // Add randomization elements to encourage variety
+    const randomSeed = Math.floor(Math.random() * 1000);
+    const creativityBoosts = [
+        "Think outside the box and surprise with an unexpected twist.",
+        "Create something that subverts typical genre expectations.",
+        "Focus on a unique, memorable setting that stands out.",
+        "Blend familiar elements in an original, creative way.",
+        "Start with an intriguing mystery or compelling situation."
+    ];
+    const randomBoost = creativityBoosts[Math.floor(Math.random() * creativityBoosts.length)];
+
+    return `You are a creative storyteller crafting a unique ${genre} adventure experience.
+
+CREATIVITY BOOST: ${randomBoost}
+RANDOM SEED: ${randomSeed} (use this to inspire unique elements)
+
+Create a complete adventure setup with character and scene data.
+
+CRITICAL REQUIREMENTS:
+- Scene narration in SECOND PERSON (you/your) describing the SITUATION and ENVIRONMENT
+- ESTABLISH CONTEXT: Explain how this situation came to be - what events led to this moment?
+- Set up the BACKSTORY and CIRCUMSTANCES that put the player in this situation
+- Examples: "The escape pod's systems failed during the crash landing..." or "The ancient seal has been broken, releasing..." or "The expedition went wrong when..."
+- DO NOT define who the player is - they can be anyone they want
+- Focus on WHAT HAPPENED to create this situation, not WHO the player is
+- NO companion character mentioned in scene narration
+- AVOID GENERIC LOCATIONS: No forests, basic paths, or typical outdoor settings
+- Create UNIQUE, SPECIFIC locations that fit ${genre} perfectly
+- Make it immediately intriguing and compelling with clear context
+
+Generate a VALID JSON object with this EXACT structure:
+
+{
+  "character": {
+    "characterType": "string - A creative base animal, creature, or being type (e.g., 'Spectral Fox', 'Clockwork Golem')",
+    "role": "string - A creative archetype or job for the character (e.g., 'Keeper of Lost Stars', 'Mad Alchemist')",
+    "mood": "string - The character's initial emotional state (e.g., 'Grumpily Optimistic', 'Serenely Detached')",
+    "style": "string - The character's manner of speaking/acting (e.g., 'Speaks only in riddles', 'Uses overly formal language')",
+    "voiceName": "string - MUST be one from: [${availableVoiceNames.join(', ')}]",
+    "characterName": "string - A unique, creative, genre-appropriate name",
+    "characterDescription": "string - A short 1-2 sentence backstory",
+    "detailedVisualDescription": "string - Comprehensive visual description for image generation",
+    "coreTrait": "string - Single defining personality trait",
+    "mainWant": "string - Primary desire/goal/motivation",
+    "keyFlaw": "string - Interesting character flaw or weakness",
+    "voicePromptInstruction": "string - How character should speak and behave in dialogue",
+    "gender": "string - MUST be 'male', 'female', or 'neutral'",
+    "age": "string - MUST be 'young', 'middle_aged', or 'old'",
+    "accent": "string - Accent preference (e.g., 'american', 'british') or empty string"
+  },
+  "scene": {
+    "imagePrompt": "string - A detailed image generation prompt for an EXPLORATION scene WITHOUT any characters, focusing on atmospheric environmental details that suggest mystery or intrigue",
+    "narrationText": "string - Opening narration (2-4 sentences) written in SECOND PERSON (you/your) that MUST include a compelling 'CALL TO ADVENTURE' hook. REQUIRED STRUCTURE: (1) Establish the inciting incident - what specific event, discovery, or crisis brought you to this moment? (2) Describe the immediate stakes or mystery that demands action. (3) Set the atmospheric scene with sensory details. This must create urgency and intrigue, not just describe a location. Focus on DRAMATIC CIRCUMSTANCES and compelling BACKSTORY that hooks the player.",
+    "narratorVoiceName": "string - MUST be one from: [${availableVoiceNames.join(', ')}]"
+  }
+}
+
+ABSOLUTE REQUIREMENTS:
+1. ALL content must be thematically consistent with "${genre}" genre
+2. Scene imagePrompt must NOT include ANY characters - focus on environment only
+3. Scene narrationText MUST be written in SECOND PERSON (you/your) from player's perspective
+4. Both voiceName and narratorVoiceName must be from the provided voice list
+5. Scene imagePrompt should describe an atmospheric, explorable environment
+6. Character will be generated but kept completely hidden until discovered during exploration
+7. NO companion character names or descriptions in the scene narration
+8. Scene narration describes what the PLAYER sees, hears, and experiences
+9. Use "you" and "your" throughout the scene narration
+10. Focus on environmental storytelling and atmosphere
+
+EXCELLENT examples (compelling call to adventure with inciting incident + stakes + atmosphere):
+- "The research station's evacuation alarm triggered three hours ago, but the transport never came. Now you find yourself in the abandoned laboratory where the experiment went catastrophically wrong, strange energy readings still pulsing from the containment chamber that lies cracked open."
+- "The ancient seal was broken during the excavation yesterday, and now you stand at the threshold of a tomb that was meant to stay closed forever. Hieroglyphs on the walls seem to shift in the torchlight, and a cold wind carries whispers in a language that predates civilization."
+- "The ship's navigation systems failed during the hyperspace jump, stranding you in this uncharted system. The emergency landing damaged most systems, and now you're exploring the alien ruins that your crash site revealed, searching for anything that might help repair your vessel."
+- "The distress signal led you through three days of treacherous mountain passes, only to discover the remote observatory abandoned and its massive telescope pointed at something that shouldn't exist. The facility's logs end abruptly mid-sentence, and the air hums with an otherworldly frequency that makes your skin crawl."
+- "Your mentor's final message was cryptic: 'The garden holds the key, but beware what blooms in darkness.' Now you stand before the conservatory she died protecting, its glass walls cracked and overgrown, while strange luminescent flowers pulse with an unnatural light that seems to respond to your presence."
+
+BAD examples (DO NOT DO THIS - these define the player):
+- "You are a space marine awakening from cryosleep..."
+- "As an experienced explorer, you recognize the signs of..."
+- "Your training kicks in as you assess the situation..."
+
+BORING examples (DO NOT DO THIS - lack compelling inciting incident and stakes):
+- "You step into the misty forest, and the air envelops you like a damp blanket."
+- "You find yourself standing at the entrance to an abandoned research facility."
+- "The lantern you carried has gone out, plunging you into the darkness of this forsaken conservatory. The air is heavy with the scent of damp earth and the sweet hint of moonflowers."
+
+WEAK examples (DO NOT DO THIS - no clear call to adventure or urgency):
+- "You enter the old mansion and notice dust particles dancing in the sunlight."
+- "The cave entrance yawns before you, dark and mysterious."
+- "You walk through the empty streets of the abandoned town."
+
+CRITICAL: The narrationText MUST include a compelling "call to adventure" - a specific event, discovery, or crisis that creates urgency and draws the player into the story. Avoid generic scene descriptions. Every opening must answer: "What happened that brought me here?" and "Why must I act now?"
+
+Generate creative, engaging content that will create an immersive "${genre}" exploration experience.`;
 }
