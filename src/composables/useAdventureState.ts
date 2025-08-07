@@ -59,6 +59,9 @@ export function useAdventureState() {
   const playingResponse = ref<boolean>(false);
   const noAudioCount = ref<number>(0);
 
+  // Companion presence in scene (different from character generated)
+  const isCompanionPresent = ref<boolean>(false);
+
   const selectedDialogModel = ref<string>(DEFAULT_DIALOG_MODEL);
   const selectedImageModel = ref<string>(DEFAULT_IMAGE_MODEL);
   const selectedInterruptSensitivity = ref<StartSensitivity>(DEFAULT_INTERRUPT_SENSITIVITY);
@@ -107,6 +110,7 @@ export function useAdventureState() {
     isConnectingAudio.value = false;
     playingResponse.value = false;
     isNarrating.value = false;
+    isCompanionPresent.value = false;
     isGameScreenActive.value = false;
 
     currentContextualMood.value = '';
@@ -200,6 +204,7 @@ export function useAdventureState() {
     isConnectingAudio,
     playingResponse,
     noAudioCount,
+    isCompanionPresent,
     selectedDialogModel,
     selectedImageModel,
     selectedInterruptSensitivity,

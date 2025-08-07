@@ -66,11 +66,11 @@ Analyze this input and decide the most appropriate narrative response. Consider:
 4. Should this trigger a scene change, dialogue, or examination?
 
 RESPONSE TYPES:
-- exploration: Player is moving/exploring, generate new scene with possible image
-- dialogue_attempt: Player trying to talk but no one present, acknowledge attempt
-- companion_dialogue: Player talking to present companion
-- companion_introduction: Time to introduce the companion character
-- examination: Player examining something in current scene, no scene change
+- exploration: Player is moving/exploring, generate new scene with image (shouldGenerateImage: true)
+- dialogue_attempt: Player trying to talk but no one present, acknowledge attempt (shouldGenerateImage: false)
+- companion_dialogue: Player talking to present companion (shouldGenerateImage: false)
+- companion_introduction: Time to introduce the companion character (shouldGenerateImage: true)
+- examination: Player examining something in current scene. Use shouldGenerateImage: true if the examination reveals significant new visual details, locations, or objects that would benefit from an image. Use shouldGenerateImage: false for simple observations.
 
 Respond with JSON:
 {
@@ -82,6 +82,11 @@ Respond with JSON:
   "imagePrompt": "Image prompt if shouldGenerateImage is true",
   "companionFirstWords": "What companion says when introduced (companion_introduction only)"
 }
+
+IMPORTANT:
+- Set shouldGenerateImage to true for exploration and companion_introduction
+- For examination: set shouldGenerateImage to true if the player discovers something visually significant (new objects, hidden areas, detailed clues, etc.), false for simple observations
+- Set shouldGenerateImage to false for dialogue_attempt and companion_dialogue
 
 Available narrator voices: ${availableVoiceNames.join(', ')}
 
@@ -109,10 +114,39 @@ IMPORTANT: Choose responseType based on narrative logic, not just input classifi
                 decision.narratorVoice = availableVoiceNames[Math.floor(Math.random() * availableVoiceNames.length)];
             }
 
+            // Ensure correct shouldGenerateImage setting and imagePrompt
+            if (decision.responseType === 'exploration' || decision.responseType === 'companion_introduction') {
+                decision.shouldGenerateImage = true;
+            } else if (decision.responseType === 'examination') {
+                // Keep the AI's decision for examination images
+                // decision.shouldGenerateImage is already set by the AI
+            } else {
+                decision.shouldGenerateImage = false;
+            }
+
+            // Ensure imagePrompt is provided when image should be generated
+            if (decision.shouldGenerateImage && !decision.imagePrompt) {
+                if (decision.responseType === 'exploration') {
+                    decision.imagePrompt = `A mysterious ${gameState.genre.toLowerCase()} scene showing the area the player is exploring, atmospheric and detailed`;
+                } else if (decision.responseType === 'companion_introduction') {
+                    decision.imagePrompt = `${gameState.companionDescription} appearing in ${gameState.currentScene}, ${gameState.genre.toLowerCase()} style`;
+                } else if (decision.responseType === 'examination') {
+                    decision.imagePrompt = `Close-up view of what the player is examining in ${gameState.currentScene}, ${gameState.genre.toLowerCase()} style, detailed and atmospheric`;
+                }
+            }
+
+            // Clear imagePrompt if no image should be generated
+            if (!decision.shouldGenerateImage) {
+                decision.imagePrompt = "";
+            }
+
             console.log('[StoryWeaver] Decision made:', {
                 type: decision.responseType,
                 reasoning: decision.reasoning,
-                voice: decision.narratorVoice
+                voice: decision.narratorVoice,
+                shouldGenerateImage: decision.shouldGenerateImage,
+                hasImagePrompt: !!decision.imagePrompt,
+                hasResponseText: !!decision.responseText
             });
 
             return decision;
@@ -148,7 +182,7 @@ IMPORTANT: Choose responseType based on narrative logic, not just input classifi
                 responseText: `Your voice echoes through ${gameState.currentScene || 'the mysterious space'}, but there's no one here to answer. The silence that follows feels heavy with unspoken secrets.`
             };
         }
-        
+
         if (input.includes('look') || input.includes('examine') || input.includes('inspect')) {
             return {
                 responseType: 'examination',

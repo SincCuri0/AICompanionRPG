@@ -26,8 +26,7 @@ export function useConversationManager(
         generatedMainWant, generatedKeyFlaw, generatedMood, generatedStyle,
         generatedVoicePromptInstruction, AIGeneratedVoiceName, selectedVoiceId,
         currentContextualMood, currentContextualStyle,
-        chatHistory, isExplorationMode, companionDiscovered, explorationCount,
-        selectedImageModel
+        chatHistory, isCompanionPresent, selectedImageModel
     } = state;
 
     const conversationService = new ConversationService(apiKey);
@@ -42,7 +41,6 @@ export function useConversationManager(
     const recentSceneElements = ref<string[]>([]); // Track recent elements to avoid repetition
 
     // Simplified companion system
-    const isCompanionPresent = ref<boolean>(false);
     const userResponseCount = ref<number>(0);
     const companionAppearanceThreshold = ref<number>(Math.floor(Math.random() * 5) + 1); // Random 1-5
 
@@ -436,13 +434,25 @@ Focus on advancing the story and revealing new aspects of the world.`;
 
         try {
             const companionIntro = await storyWeaver.generateCompanionIntroduction(userInput, gameState);
+            console.log('[ConversationManager] Companion intro response:', {
+                narrationText: companionIntro.narrationText.substring(0, 50) + '...',
+                hasImagePrompt: !!companionIntro.imagePrompt,
+                shouldGenerateImage: decision.shouldGenerateImage
+            });
+
+            // Generate image if needed
+            let imageUrl: string | undefined;
+            if (decision.shouldGenerateImage && companionIntro.imagePrompt) {
+                console.log('[ConversationManager] Generating image for companion introduction');
+                imageUrl = await generateSceneImage(companionIntro.imagePrompt);
+            }
 
             // Add narrator introduction
             const narratorMessage = {
                 id: chatHistory.value.length + 1,
                 sender: 'companion' as const,
                 text: companionIntro.narrationText,
-                imageUrl: decision.shouldGenerateImage ? await generateSceneImage(companionIntro.imagePrompt) : undefined,
+                imageUrl: imageUrl,
                 isNarrating: false
             };
             chatHistory.value.push(narratorMessage);
@@ -474,19 +484,39 @@ Focus on advancing the story and revealing new aspects of the world.`;
 
         try {
             const explorationResponse = await storyWeaver.generateExplorationResponse(userInput, gameState);
+            console.log('[ConversationManager] Exploration response:', {
+                narrationText: explorationResponse.narrationText.substring(0, 50) + '...',
+                hasImagePrompt: !!explorationResponse.imagePrompt,
+                shouldGenerateImage: decision.shouldGenerateImage
+            });
+
+            // Generate image if needed
+            let imageUrl: string | undefined;
+            if (decision.shouldGenerateImage && explorationResponse.imagePrompt) {
+                console.log('[ConversationManager] Generating image for exploration scene');
+                imageUrl = await generateSceneImage(explorationResponse.imagePrompt);
+            }
 
             // Add narrator response
             const narratorMessage = {
                 id: chatHistory.value.length + 1,
                 sender: 'companion' as const,
                 text: explorationResponse.narrationText,
-                imageUrl: decision.shouldGenerateImage ? await generateSceneImage(explorationResponse.imagePrompt) : undefined,
+                imageUrl: imageUrl,
                 isNarrating: false
             };
             chatHistory.value.push(narratorMessage);
 
             // Update current location description
             currentLocationDescription.value = explorationResponse.narrationText;
+
+            // Extract and track scene elements to avoid repetition
+            const locationKeywords = explorationResponse.narrationText
+                .toLowerCase()
+                .split(/[^a-zA-Z]+/)
+                .filter(word => word.length > 4)
+                .slice(0, 3);
+            recentSceneElements.value = [...new Set([...recentSceneElements.value, ...locationKeywords])].slice(-5);
 
             // Play narration
             await playNarration(narratorMessage, explorationResponse.narrationText, decision.narratorVoice);
@@ -525,10 +555,18 @@ Focus on advancing the story and revealing new aspects of the world.`;
         console.log('[ConversationManager] Handling examination');
         conversationMessage.value = 'Looking closer...';
 
+        // Generate image if the examination warrants it
+        let imageUrl: string | undefined;
+        if (decision.shouldGenerateImage && decision.imagePrompt) {
+            console.log('[ConversationManager] Generating image for examination');
+            imageUrl = await generateSceneImage(decision.imagePrompt);
+        }
+
         const narratorMessage = {
             id: chatHistory.value.length + 1,
             sender: 'companion' as const,
             text: decision.responseText,
+            imageUrl: imageUrl,
             isNarrating: false
         };
         chatHistory.value.push(narratorMessage);
@@ -586,6 +624,8 @@ Focus on advancing the story and revealing new aspects of the world.`;
         if (!imagePrompt) return undefined;
 
         try {
+            console.log('[ConversationManager] Generating scene image with prompt:', imagePrompt.substring(0, 100) + '...');
+
             const imageResponse = await imageGeneratorService.generate(
                 selectedImageModel.value,
                 imagePrompt,
@@ -593,18 +633,22 @@ Focus on advancing the story and revealing new aspects of the world.`;
             );
 
             const parts = imageResponse.candidates?.[0]?.content?.parts;
-            if (parts) {
-                for (const part of parts) {
-                    if (part.inlineData?.data) {
-                        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-                    }
+            if (parts && parts.length > 0) {
+                const imagePart = parts.find(part => part.inlineData && part.inlineData.data);
+                if (imagePart) {
+                    const mimeType = imagePart.inlineData.mimeType || 'image/jpeg';
+                    const imageUrl = `data:${mimeType};base64,${imagePart.inlineData.data}`;
+                    console.log('[ConversationManager] Scene image generated successfully');
+                    return imageUrl;
                 }
             }
+
+            console.warn('[ConversationManager] No image data found in response');
+            return undefined;
         } catch (error) {
             console.warn('[ConversationManager] Image generation failed:', error);
+            return undefined;
         }
-
-        return undefined;
     };
 
     const playNarration = async (narratorMessage: any, text: string, voice: string): Promise<void> => {
@@ -642,7 +686,13 @@ Focus on advancing the story and revealing new aspects of the world.`;
 
             // Let Story Weaver decide how to respond
             const decision = await storyWeaver.decideResponse(userInput, gameState);
-            console.log('[ConversationManager] Story Weaver decision:', decision.responseType, '-', decision.reasoning);
+            console.log('[ConversationManager] Story Weaver decision:', {
+                responseType: decision.responseType,
+                reasoning: decision.reasoning,
+                shouldGenerateImage: decision.shouldGenerateImage,
+                hasImagePrompt: !!decision.imagePrompt,
+                hasResponseText: !!decision.responseText
+            });
 
             // Override decision if companion threshold reached
             if (shouldIntroduceCompanion && decision.responseType !== 'companion_introduction') {

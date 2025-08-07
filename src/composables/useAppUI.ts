@@ -12,8 +12,11 @@ export function useAppUI(state: AdventureState) {
     const showRawModal = ref<boolean>(false);   // Button to trigger this is currently removed
     const isCopied = ref<boolean>(false);
     const isSmallScreen = ref(window.innerWidth < 1024);
-    const forceShowBottomMessage = ref(false); 
+    const forceShowBottomMessage = ref(false);
     const showMobileSidebar = ref<boolean>(false); // New state for mobile sidebar
+
+    // Companion panel needs more space - only show on larger screens
+    const shouldShowCompanionPanel = ref(window.innerWidth >= 1400);
 
     const resetFullAdventureState = () => _resetFullAdventureState(isSmallScreen.value);
 
@@ -51,7 +54,8 @@ export function useAppUI(state: AdventureState) {
     const handleResize = () => {
         const oldIsSmallScreen = isSmallScreen.value;
         isSmallScreen.value = window.innerWidth < 1024;
-        
+        shouldShowCompanionPanel.value = window.innerWidth >= 1400;
+
         if (oldIsSmallScreen && !isSmallScreen.value && showMobileSidebar.value) {
             showMobileSidebar.value = false; // Close mobile sidebar if screen becomes large
         }
@@ -98,6 +102,7 @@ export function useAppUI(state: AdventureState) {
         copyShareUrl,
         // showClickToRestartHelp, // Removed
         isSmallScreen,
+        shouldShowCompanionPanel,
         forceShowBottomMessage,
         showMobileSidebar, // Exposed for template use
     };

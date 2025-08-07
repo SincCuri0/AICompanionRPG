@@ -21,6 +21,7 @@ export default defineComponent({
     imageKey: { type: String, required: true }, // For CharacterImage :key
     isLoadingCharacter: { type: Boolean, default: false },
     isCharacterGenerated: { type: Boolean, default: false },
+    isCompanionPresent: { type: Boolean, default: false }, // New prop for companion presence in scene
   },
   emits: ['update:imagePrompt', 'quota-exceeded'],
   setup(props, { emit }) {
@@ -48,14 +49,32 @@ export default defineComponent({
     };
   },
   template: `
-    <div class="bg-gray-800 rounded-lg shadow-xl p-3 sm:p-4">
+    <div class="bg-gray-800 rounded-lg shadow-xl p-3 sm:p-4 h-full">
+      <!-- Loading State -->
       <div v-if="isLoadingCharacter && !isCharacterGenerated" class="text-center text-gray-400 py-8">
         <div class="animate-pulse">Generating companion...</div>
       </div>
-      <div v-else-if="!isCharacterGenerated && !isLoadingCharacter" class="text-center text-gray-400 py-8">
-        Companion details will appear here.
+
+      <!-- Companion Not Discovered State -->
+      <div v-else-if="!isCompanionPresent" class="flex flex-col items-center justify-center h-full min-h-[300px]">
+        <div class="w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48 rounded-xl overflow-hidden mb-4 bg-gray-700 shadow-lg flex items-center justify-center border-2 border-gray-600 border-dashed">
+          <div class="text-6xl text-gray-500 animate-pulse">?</div>
+        </div>
+        <div class="text-center">
+          <h3 class="text-xl sm:text-2xl font-bold text-gray-400 mb-2">Companion not discovered</h3>
+          <p class="text-sm text-gray-500 leading-relaxed px-2">Your companion will appear here after you meet them in your adventure.</p>
+        </div>
+        <div class="mt-6 w-full">
+          <label class="block text-xs font-medium text-gray-400 mb-1">Relationship:</label>
+          <div class="w-full bg-gray-600 rounded-full h-2.5">
+            <div class="bg-gray-500 h-2.5 rounded-full transition-all duration-300 ease-in-out" style="width: 0%"></div>
+          </div>
+          <div class="text-xs text-gray-500 mt-1 text-center">Not established</div>
+        </div>
       </div>
-      <div v-else>
+
+      <!-- Companion Present State -->
+      <div v-else-if="isCompanionPresent && isCharacterGenerated">
         <div class="w-full flex flex-col items-center mb-4">
           <div class="w-32 h-32 sm:w-40 sm:h-40 lg:w-48 lg:h-48 rounded-xl overflow-hidden mb-4 bg-gray-700 shadow-lg">
             <CharacterImage

@@ -189,14 +189,50 @@ const ImagineOrchestrator = defineComponent({
       <Transition name="fade">
         <div v-if="isGameScreenActive" class="w-full h-screen flex flex-col">
 
+          <!-- Genre Header -->
+          <div class="flex-shrink-0 bg-gray-900/80 backdrop-blur-sm border-b border-gray-700/50 px-4 py-3">
+            <div class="max-w-7xl mx-auto flex items-center justify-between">
+              <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-3">
+                  <div class="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+                  <span class="text-white text-lg font-semibold">{{ selectedGenre }}</span>
+                </div>
+                <!-- Adventure Status -->
+                <div class="hidden sm:flex items-center space-x-2 text-xs">
+                  <div class="w-1 h-1 bg-gray-500 rounded-full"></div>
+                  <span class="text-gray-400">
+                    <span v-if="isLoadingAdventure && !isCharacterGenerated">Creating adventure...</span>
+                    <span v-else-if="isCharacterGenerated && !isSceneDataReady">Adventure ready</span>
+                    <span v-else-if="isSceneDataReady">In progress</span>
+                    <span v-else>Waiting to begin</span>
+                  </span>
+                </div>
+              </div>
+              <!-- Companion toggle button for screens without companion panel -->
+              <button v-if="!shouldShowCompanionPanel"
+                      @click="toggleCompanionInfo"
+                      class="flex items-center space-x-2 px-3 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span class="text-gray-300 text-sm">Companion</span>
+              </button>
+            </div>
+          </div>
+
           <!-- Main Content Area - Fully Justified -->
           <div class="flex-1 flex items-center justify-center p-4 lg:p-6 relative"
                :style="{paddingBottom: (isSmallScreen ? 180 : 100) + 'px'}">
 
             <!-- Game Window - Centered and Fully Justified -->
-            <div class="w-full max-w-7xl h-full flex items-center justify-center">
+            <div class="w-full h-full flex items-center justify-center"
+                 :class="{
+                   'max-w-7xl': isSmallScreen,
+                   'max-w-5xl': !isSmallScreen && !shouldShowCompanionPanel,
+                   'max-w-4xl': shouldShowCompanionPanel
+                 }">
               <SceneDisplayPanel
-                class="w-full h-full max-h-[calc(100vh-120px)] lg:max-h-[calc(100vh-140px)]"
+                class="w-full h-full max-h-[calc(100vh-180px)] lg:max-h-[calc(100vh-200px)]"
                 :is-loading="isLoadingScene || (isLoadingAdventure && !isCharacterGenerated && !isSceneDataReady)"
                 :chat-history="chatHistory"
                 :companion-name="generatedCharacterName"
@@ -205,7 +241,7 @@ const ImagineOrchestrator = defineComponent({
             </div>
 
             <!-- Companion Panel - ABSOLUTE positioned next to centered panel -->
-            <div v-if="!isSmallScreen && false" class="absolute top-0 w-80 hidden xl:block" style="left: calc(50% + 2rem + 32rem);">
+            <div v-if="shouldShowCompanionPanel" class="absolute top-0 right-0 w-80 h-full">
               <CompanionInfoPanel
                 ref="companionInfoPanelRef"
                 :character-name="generatedCharacterName"
@@ -217,18 +253,19 @@ const ImagineOrchestrator = defineComponent({
                 :image-key="characterImageKey"
                 :is-loading-character="isLoadingCharacter || (isLoadingAdventure && !isCharacterGenerated)"
                 :is-character-generated="isCharacterGenerated"
+                :is-companion-present="isCompanionPresent"
                 @update:imagePrompt="handleUpdateImagePrompt"
                 @quota-exceeded="() => handleQuotaExceeded('characterImage')"
               />
             </div>
           </div>
 
-          <!-- Mobile Companion Panel Overlay -->
+          <!-- Companion Panel Overlay (for screens without permanent panel) -->
           <Transition name="slide-left">
-            <div v-if="isSmallScreen && showCompanionInfo && false"
+            <div v-if="!shouldShowCompanionPanel && showCompanionInfo"
                  class="fixed inset-y-0 right-0 z-50 w-80 bg-gray-800 shadow-2xl overflow-y-auto">
               <div class="p-4">
-                <button @click="toggleCompanionInfo" 
+                <button @click="toggleCompanionInfo"
                         class="mb-4 w-full flex items-center justify-center px-4 py-2 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
                   <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-300 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -246,6 +283,7 @@ const ImagineOrchestrator = defineComponent({
                   :image-key="characterImageKey"
                   :is-loading-character="isLoadingCharacter || (isLoadingAdventure && !isCharacterGenerated)"
                   :is-character-generated="isCharacterGenerated"
+                  :is-companion-present="isCompanionPresent"
                   @update:imagePrompt="handleUpdateImagePrompt"
                   @quota-exceeded="() => handleQuotaExceeded('characterImage')"
                 />
@@ -253,14 +291,7 @@ const ImagineOrchestrator = defineComponent({
             </div>
           </Transition>
 
-          <!-- Burger Menu Button - Small Screens Only -->
-          <button v-if="isGameScreenActive && isSmallScreen && false"
-                  @click="toggleCompanionInfo"
-                  class="fixed top-4 right-4 z-40 w-12 h-12 bg-gray-800/90 backdrop-blur-sm rounded-lg shadow-lg flex items-center justify-center hover:bg-gray-700/90 transition-colors">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-          </button>
+
 
 
 
