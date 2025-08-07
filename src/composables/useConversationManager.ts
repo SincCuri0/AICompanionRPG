@@ -5,7 +5,7 @@
 import { ref, Ref, watch } from 'vue';
 import { ConversationService, ConversationConfig } from '../conversation-service';
 import { audioEventBus } from '../audio-event-bus';
-import { GroqService } from '../groq-service';
+import { GroqService, cleanJsonResponse } from '../groq-service';
 import { ImageGeneratorService } from '../image-generator-service';
 import { NarrationService } from '../narration-service';
 import { StoryWeaverService, GameState } from '../story-weaver-service';
@@ -132,7 +132,7 @@ Respond with valid JSON in this exact format:
 }`;
 
             const response = await groqService.generateResponse(prompt, 1.1);
-            const sceneData = JSON.parse(response);
+            const sceneData = JSON.parse(cleanJsonResponse(response));
 
             // Generate image
             let imageUrl: string | undefined;
@@ -272,7 +272,7 @@ Focus on advancing the story and revealing new aspects of the world.`;
                 }
             );
 
-            const sceneData = JSON.parse(response);
+            const sceneData = JSON.parse(cleanJsonResponse(response));
 
             // Generate scene image
             let imageUrl: string | undefined;

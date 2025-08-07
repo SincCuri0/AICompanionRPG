@@ -4,6 +4,31 @@
  */
 import Groq from "groq-sdk";
 
+/**
+ * Utility function to clean JSON response from Groq that might be wrapped in markdown code blocks
+ */
+export function cleanJsonResponse(response: string): string {
+  let jsonStr = response.trim();
+
+  // Remove markdown code blocks if present
+  const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
+  const match = jsonStr.match(fenceRegex);
+  if (match && match[2]) {
+    jsonStr = match[2].trim();
+  }
+
+  // Remove any leading/trailing text that might not be JSON
+  // Look for the first { and last } to extract just the JSON part
+  const firstBrace = jsonStr.indexOf('{');
+  const lastBrace = jsonStr.lastIndexOf('}');
+
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    jsonStr = jsonStr.substring(firstBrace, lastBrace + 1);
+  }
+
+  return jsonStr;
+}
+
 export class GroqService {
   private apiKey: string;
   private groq: Groq | null = null;
@@ -95,6 +120,17 @@ export class GroqService {
         return responseText.trim();
       } else {
         // Production: Use fetch to Vercel API route
+
+        // Choose model based on structured output support (same logic as dev)
+        let model: string;
+        if (options.useStructuredOutput && options.jsonSchema) {
+          // Use a model that supports structured outputs
+          model = "meta-llama/llama-4-maverick-17b-128e-instruct";
+        } else {
+          // Use regular models for non-structured generation
+          model = options.useCreativeModel ? "llama-3.3-70b-versatile" : "llama-3.1-8b-instant";
+        }
+
         const requestBody: any = {
           messages: [
             {
@@ -106,13 +142,25 @@ export class GroqService {
               content: userMessage,
             },
           ],
-          model: "llama-3.1-8b-instant",
-          temperature: 0.8,
+          model,
+          temperature,
           max_tokens: 2048,
+          seed: randomSeed, // Random seed for variety
         };
 
-        // Only add JSON format for character generation
-        if (useJsonFormat) {
+        // Handle different output formats (same logic as dev)
+        if (options.useStructuredOutput && options.jsonSchema) {
+          // Use Groq's structured outputs with JSON Schema
+          requestBody.response_format = {
+            type: "json_schema",
+            json_schema: {
+              name: "scene_generation",
+              schema: options.jsonSchema,
+              strict: true
+            }
+          };
+        } else if (useJsonFormat) {
+          // Fallback to basic JSON object mode
           requestBody.response_format = {"type": "json_object"};
         }
 

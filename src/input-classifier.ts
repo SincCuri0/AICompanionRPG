@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import { GroqService } from './groq-service';
+import { GroqService, cleanJsonResponse } from './groq-service';
 
 export interface InputClassification {
   type: 'navigation' | 'dialogue' | 'examination';
@@ -54,7 +54,7 @@ Navigation and some examinations should generate new scenes.`;
         true
       );
 
-      const result = JSON.parse(response);
+      const result = JSON.parse(cleanJsonResponse(response));
       return {
         type: result.type,
         confidence: result.confidence || 0.7,

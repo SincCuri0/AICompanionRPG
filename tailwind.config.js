@@ -38,12 +38,28 @@ export default {
         mono: "'Roboto Mono', SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace"
       },
       animation: {
-        'pulse-subtle': 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'pulse-subtle': 'pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'fade-in': 'fade-in 0.5s ease-out',
+        'bounce-subtle': 'bounce 1s infinite',
       },
       keyframes: {
         pulse: {
           '0%, 100%': { opacity: 1 },
           '50%': { opacity: .7 },
+        },
+        'pulse-subtle': {
+          '0%, 100%': { opacity: 1 },
+          '50%': { opacity: 0.8 },
+        },
+        'fade-in': {
+          'from': {
+            opacity: 0,
+            transform: 'translateY(10px)'
+          },
+          'to': {
+            opacity: 1,
+            transform: 'translateY(0)'
+          },
         }
       }
     }

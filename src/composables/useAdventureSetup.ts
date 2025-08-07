@@ -8,7 +8,7 @@ import { ref } from 'vue';
 import { GoogleGenAI, GenerateContentResponse, Session, Modality, StartSensitivity, EndSensitivity, LiveServerMessage, SpeechConfig } from '@google/genai';
 import { ImageGeneratorService } from '../image-generator-service';
 import { NarrationService } from '../narration-service';
-import { GroqService } from '../groq-service';
+import { GroqService, cleanJsonResponse } from '../groq-service';
 
 import { VOICE_OPTIONS } from '../ai-data';
 import { Genre } from '../ai-data-types';
@@ -163,11 +163,7 @@ export function useAdventureSetup(
             const consolidatedGenDuration = performance.now() - consolidatedGenStartTime;
             console.log(`[AdventureSetup] ⏱️ Consolidated adventure generation completed in ${consolidatedGenDuration.toFixed(2)}ms`);
 
-            let jsonStrConsolidated = consolidatedResponse.trim();
-            const fenceRegexConsolidated = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
-            const matchConsolidated = jsonStrConsolidated.match(fenceRegexConsolidated);
-            if (matchConsolidated && matchConsolidated[2]) jsonStrConsolidated = matchConsolidated[2].trim();
-            const parsedAdventureData = JSON.parse(jsonStrConsolidated);
+            const parsedAdventureData = JSON.parse(cleanJsonResponse(consolidatedResponse));
             console.log("[AdventureSetup] Parsed consolidated adventure data:", parsedAdventureData);
 
             // Extract character and scene data

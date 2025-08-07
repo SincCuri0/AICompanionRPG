@@ -2,7 +2,7 @@
  * @license
  * SPDX-License-Identifier: Apache-2.0
  */
-import { GroqService } from './groq-service';
+import { GroqService, cleanJsonResponse } from './groq-service';
 import { VOICE_OPTIONS } from './ai-data';
 import { Genre } from './ai-data-types';
 
@@ -102,7 +102,7 @@ IMPORTANT: Choose responseType based on narrative logic, not just input classifi
                 }
             );
 
-            const decision = JSON.parse(response);
+            const decision = JSON.parse(cleanJsonResponse(response));
             
             // Validate and set defaults
             const validResponseTypes = ['exploration', 'dialogue_attempt', 'companion_dialogue', 'companion_introduction', 'examination'];
@@ -248,7 +248,7 @@ Focus on:
                 }
             );
 
-            return JSON.parse(response);
+            return JSON.parse(cleanJsonResponse(response));
 
         } catch (error) {
             console.error('[StoryWeaver] Failed to generate exploration response:', error);
@@ -291,7 +291,7 @@ Respond with JSON:
                 }
             );
 
-            return JSON.parse(response);
+            return JSON.parse(cleanJsonResponse(response));
 
         } catch (error) {
             console.error('[StoryWeaver] Failed to generate companion introduction:', error);
